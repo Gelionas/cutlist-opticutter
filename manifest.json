@@ -1,0 +1,16 @@
+{
+  "name": "Cutlist Tool",
+  "short_name": "Cutlist",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "A_flat,_cartoon-style_digital_illustration_icon_fe.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
