@@ -1,436 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="A_flat,_cartoon-style_digital_illustration_icon_fe.png" sizes="512x512" type="image/png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="A_flat,_cartoon-style_digital_illustration_icon_fe.png">
-
-<meta charset="utf-8">
-<title>Cabinet Cut List → OptiCutter CSV (All Fractions)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>Cabinet Cutlist Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body{font-family:system-ui,Arial,sans-serif;line-height:1.4;margin:24px;max-width:980px}
-  h1{margin:0 0 12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-  label{display:flex;flex-direction:column;font-size:13px;gap:6px}
-  input,textarea,button{font-size:14px;padding:10px}
-  textarea{min-height:140px;width:100%;resize:vertical}
-  button{cursor:pointer}
-  table{border-collapse:collapse;width:100%;margin-top:14px}
-  th,td{border:1px solid #ddd;padding:8px;text-align:left}
-  th{background:#f6f6f6}
-  .muted{color:#666;font-size:13px}
-  .row{margin:18px 0;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-  .error{color:#b00020;margin-top:8px}
-  .switch{display:flex;align-items:center;gap:8px}
-  .spacer{flex:1}
-  .note{font-size:12px;color:#777}
-  .btn{padding:10px 14px}
-  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .25s}
-  #toast.show{opacity:0.95}
+  body { font-family: Arial, sans-serif; padding: 20px; }
+  input, button, textarea { margin: 5px 0; padding: 5px; width: 100%; }
+  button { background: #2c7; border: none; color: white; font-weight: bold; cursor: pointer; }
+  button:hover { background: #1a5; }
 </style>
 </head>
 <body>
-<h1>Cabinet Cut List → OptiCutter CSV (All Fractions)</h1>
+<h2>Cabinet Cutlist Tool</h2>
 
-<div class="muted">
-  One box per line: <code>Width[, Quantity]</code> — Width is the <em>total face-frame width</em> (edge to edge). Quantity defaults to 1.
-</div>
+<label>Face Frame Reveal (default 1/4")</label>
+<input id="frameReveal" value="1/4">
 
-<h2>Cabinet Defaults (build rules)</h2>
-<div class="grid">
-  <label>Panel Thickness (T)
-    <input id="panelThickness" value="1/2">
-  </label>
-  <label>Face Frame Thickness (FT)
-    <input id="frameThickness" value="3/4">
-  </label>
-  <label>Reveal (each side) (FR)
-    <input id="frameReveal" value="1/4">
-  </label>
-  <label>Dado Depth (DD)
-    <input id="dadoDepth" value="1/8">
-  </label>
-  <label>Height Margin (HM)
-    <input id="heightMargin" value="0">
-  </label>
-  <label>Default Height (H)
-    <input id="defaultHeight" value="34 1/2">
-  </label>
-  <label>Default Depth (D)
-    <input id="defaultDepth" value="24">
-  </label>
-</div>
+<label>Panel Thickness (default 1/2")</label>
+<input id="panelThickness" value="1/2">
 
-<h2>OptiCutter Export Settings</h2>
-<div class="grid">
-  <label>Plan Name (N)
-    <input id="planName" value="Cabinet Retrofit">
-  </label>
-  <label>Material (M)
-    <input id="materialName" value="Plywood 1/2in">
-  </label>
-  <label>Kerf (K) — fractional (OptiCutter supports it)
-    <input id="kerf" value="3/32">
-  </label>
-  <label>Trim Left (LT)
-    <input id="trimLeft" value="0">
-  </label>
-  <label>Trim Right (RT)
-    <input id="trimRight" value="0">
-  </label>
-  <label>Trim Top (TT)
-    <input id="trimTop" value="0">
-  </label>
-  <label>Trim Bottom (BT)
-    <input id="trimBottom" value="0">
-  </label>
-  <label>Sheet Length (in)
-    <input id="sheetLen" value="96">
-  </label>
-  <label>Sheet Width (in)
-    <input id="sheetWid" value="48">
-  </label>
-  <label>Sheet Quantity (blank = unspecified)
-    <input id="sheetQty" value="">
-  </label>
-</div>
+<label>Frame Thickness (default 3/4")</label>
+<input id="frameThickness" value="3/4">
 
-<div class="row">
-  <label style="width:100%">Boxes (one per line) — <code>Width[, Quantity]</code>
-    <textarea id="batchInput" placeholder="24, 2&#10;30&#10;18 1/4, 3"></textarea>
-  </label>
-  <div id="err" class="error"></div>
-</div>
+<label>Dado Depth (default 1/8")</label>
+<input id="dadoDepth" value="1/8">
 
-<div class="row">
-  <label class="switch">
-    <input id="rememberSettings" type="checkbox"> Remember my settings
-  </label>
-  <button class="btn" type="button" onclick="resetSettings()">Reset settings</button>
-  <span class="spacer"></span>
-  <label class="switch">
-    <input id="autoOpenOpti" type="checkbox" checked> Auto-open OptiCutter after download
-  </label>
-  <button id="openOptiBtn" class="btn" type="button" onclick="openOptiCutter()">Open OptiCutter (Import)</button>
-</div>
+<label>Height Margin (default 0")</label>
+<input id="heightMargin" value="0">
 
-<div class="row">
-  <button class="btn" onclick="run()">Preview & Download OptiCutter CSV</button>
-  <button class="btn" type="button" onclick="copyCSV()">Generate & Copy CSV</button>
-  <span class="note">Tip: on iPhone, add this page to Home Screen for a one-tap workflow.</span>
-</div>
+<label>Default Cabinet Height</label>
+<input id="defaultHeight" value="34 1/2">
 
-<div id="preview"></div>
-<div id="toast"></div>
+<label>Default Cabinet Depth</label>
+<input id="defaultDepth" value="24">
+
+<label>Kerf (default 3/32")</label>
+<input id="kerf" value="3/32">
+
+<label>Face Frame Widths & Qty (one per line: width, qty)</label>
+<textarea id="batchInput" rows="5">18,1
+24,2</textarea>
+
+<button onclick="generateBatchCutList()">Generate CSV</button>
+<button onclick="openOptiCutter()">Open OptiCutter Import</button>
 
 <script>
-/* ------------------ Fraction arithmetic (no floats) ------------------ */
-class Frac {
-  constructor(n, d=1) {
-    if (d === 0) throw new Error("Denominator 0");
-    const neg = (n<0) ^ (d<0);
-    n = Math.abs(n); d = Math.abs(d);
-    const g = Frac.#gcd(n,d);
-    this.n = (neg ? -1 : 1) * (n/g);
-    this.d = d/g;
-  }
-  static #gcd(a,b){while(b){[a,b]=[b,a%b]} return a||1}
-  static fromString(s) {
-    if (s==null) throw new Error("Empty fraction");
-    s = (""+s).trim();
-    if (!s) throw new Error("Empty fraction");
-    // mixed: "34 1/2"
-    if (s.includes(" ")) {
-      const [whole, frac] = s.split(" ").map(x=>x.trim());
-      return Frac.fromString(whole).add(Frac.fromString(frac));
+function parseFraction(str) {
+    str = str.trim();
+    if (str.includes(' ')) { // mixed number
+        let [whole, frac] = str.split(' ');
+        let [num, den] = frac.split('/');
+        return parseInt(whole) + (parseInt(num) / parseInt(den));
+    } else if (str.includes('/')) { // fraction only
+        let [num, den] = str.split('/');
+        return parseInt(num) / parseInt(den);
     }
-    // simple: "3/4"
-    if (s.includes("/")) {
-      const [ns, ds] = s.split("/").map(x=>x.trim());
-      const n = Number(ns), d = Number(ds);
-      if (!Number.isFinite(n) || !Number.isFinite(d) || d===0) throw new Error("Bad fraction: "+s);
-      return new Frac(n,d);
+    return parseFloat(str);
+}
+
+function toFraction(value) {
+    let whole = Math.floor(value);
+    let frac = value - whole;
+    let precision = 64; // up to 1/64"
+    let num = Math.round(frac * precision);
+    let den = precision;
+    while (num && den % 2 === 0 && num % 2 === 0) {
+        num /= 2; den /= 2;
     }
-    // integer
-    const v = Number(s);
-    if (!Number.isFinite(v)) throw new Error("Bad number: "+s);
-    return new Frac(v,1);
-  }
-  add(o){o=Frac.#to(o); return new Frac(this.n*o.d + o.n*this.d, this.d*o.d)}
-  sub(o){o=Frac.#to(o); return new Frac(this.n*o.d - o.n*this.d, this.d*o.d)}
-  mul(o){o=Frac.#to(o); return new Frac(this.n*o.n, this.d*o.d)}
-  div(o){o=Frac.#to(o); if (o.n===0) throw new Error("Divide by zero"); return new Frac(this.n*o.d, this.d*o.n)}
-  neg(){return new Frac(-this.n,this.d)}
-  clone(){return new Frac(this.n,this.d)}
-  static #to(x){return x instanceof Frac ? x : new Frac(x,1)}
-  toMixedString() {
-    const neg = this.n<0;
-    let n = Math.abs(this.n), d = this.d;
-    const whole = Math.floor(n/d);
-    const rem = n - whole*d;
-    if (rem===0) return (neg?"-":"") + String(whole);
-    return (neg?"-":"") + (whole?`${whole} `:"") + `${rem}/${d}`;
-  }
+    if (whole === 0 && num > 0) return `${num}/${den}`;
+    if (num === 0) return `${whole}`;
+    return `${whole} ${num}/${den}`;
 }
 
-/* ------------------ Cabinet math (all fractions) ------------------ */
-// boxWidth = W - 2*FR
-// sideDepth = D - FT + DD
-// betweenSidesWidth = boxWidth - 2*T
-// bottomDepth = sideDepth - T
-// sideHeight = backHeight = H - HM
+function generateBatchCutList() {
+    const parts = [];
+    const FR = parseFraction(document.getElementById('frameReveal').value);
+    const PT = parseFraction(document.getElementById('panelThickness').value);
+    const FT = parseFraction(document.getElementById('frameThickness').value);
+    const DD = parseFraction(document.getElementById('dadoDepth').value);
+    const HM = parseFraction(document.getElementById('heightMargin').value);
+    const defaultHeight = parseFraction(document.getElementById('defaultHeight').value);
+    const defaultDepth = parseFraction(document.getElementById('defaultDepth').value);
 
-function computeParts(faceFrameWidthRaw, qty, def) {
-  const W  = Frac.fromString(faceFrameWidthRaw);
-  const boxWidth          = W.sub(def.FR.mul(2));
-  const sideDepth         = def.D.sub(def.FT).add(def.DD);
-  const betweenSidesWidth = boxWidth.sub(def.T.mul(2));
-  const bottomDepth       = sideDepth.sub(def.T);
-  const sideHeight        = def.H.sub(def.HM);
-  const backHeight        = def.H.sub(def.HM);
+    document.getElementById('batchInput').value.split('\n').forEach(line => {
+        if (!line.trim()) return;
+        let [faceFrameWidth, qty] = line.split(',').map(x => x.trim());
+        qty = qty ? parseInt(qty) : 1;
+        const W = parseFraction(faceFrameWidth);
 
-  return [
-    { partName:`Side`,                         qty:2*qty, width:sideDepth,         height:sideHeight },
-    { partName:`Bottom ${faceFrameWidthRaw}`,  qty:1*qty, width:betweenSidesWidth, height:bottomDepth },
-    { partName:`Back ${faceFrameWidthRaw}`,    qty:1*qty, width:betweenSidesWidth, height:backHeight }
-  ];
-}
+        const boxWidth = W - (2 * FR);
+        const sideDepth = defaultDepth - FT + DD;
+        const betweenSidesWidth = boxWidth - (2 * PT);
+        const bottomDepth = sideDepth - PT;
+        const sideHeight = defaultHeight;
+        const backHeight = defaultHeight - HM;
 
-/* ------------------ State / Settings ------------------ */
-const LS_KEY = "cutlist_opticutter_settings_v1";
-function getInputs() {
-  return {
-    panelThickness:  document.getElementById('panelThickness').value,
-    frameThickness:  document.getElementById('frameThickness').value,
-    frameReveal:     document.getElementById('frameReveal').value,
-    dadoDepth:       document.getElementById('dadoDepth').value,
-    heightMargin:    document.getElementById('heightMargin').value,
-    defaultHeight:   document.getElementById('defaultHeight').value,
-    defaultDepth:    document.getElementById('defaultDepth').value,
-    planName:        document.getElementById('planName').value,
-    materialName:    document.getElementById('materialName').value,
-    kerf:            document.getElementById('kerf').value,
-    trimLeft:        document.getElementById('trimLeft').value,
-    trimRight:       document.getElementById('trimRight').value,
-    trimTop:         document.getElementById('trimTop').value,
-    trimBottom:      document.getElementById('trimBottom').value,
-    sheetLen:        document.getElementById('sheetLen').value,
-    sheetWid:        document.getElementById('sheetWid').value,
-    sheetQty:        document.getElementById('sheetQty').value,
-    autoOpenOpti:    document.getElementById('autoOpenOpti').checked,
-    remember:        document.getElementById('rememberSettings').checked,
-    batchInput:      document.getElementById('batchInput').value
-  };
-}
-function setInputs(obj) {
-  for (const [k,v] of Object.entries(obj||{})) {
-    const el = document.getElementById(k);
-    if (!el) continue;
-    if (el.type === "checkbox") el.checked = !!v;
-    else el.value = v;
-  }
-}
-function saveSettings() {
-  const s = getInputs();
-  localStorage.setItem(LS_KEY, JSON.stringify(s));
-  toast("Settings saved");
-}
-function loadSettings() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (!raw) return;
-  try {
-    const s = JSON.parse(raw);
-    setInputs(s);
-  } catch {}
-}
-function resetSettings() {
-  localStorage.removeItem(LS_KEY);
-  // Reload page to defaults
-  location.reload();
-}
-
-/* ------------------ UI flow ------------------ */
-let lastCSV = ""; // for Copy CSV
-
-function run() {
-  document.getElementById('err').textContent = "";
-  document.getElementById('preview').innerHTML = "";
-
-  // save if user wants remembering
-  if (document.getElementById('rememberSettings').checked) {
-    saveSettings();
-  }
-
-  let def;
-  try {
-    def = {
-      T:  Frac.fromString(document.getElementById('panelThickness').value),
-      FT: Frac.fromString(document.getElementById('frameThickness').value),
-      FR: Frac.fromString(document.getElementById('frameReveal').value),
-      DD: Frac.fromString(document.getElementById('dadoDepth').value),
-      HM: Frac.fromString(document.getElementById('heightMargin').value),
-      H:  Frac.fromString(document.getElementById('defaultHeight').value),
-      D:  Frac.fromString(document.getElementById('defaultDepth').value)
-    };
-  } catch(e) {
-    document.getElementById('err').textContent = "Default error: " + e.message;
-    return;
-  }
-
-  const lines = document.getElementById('batchInput').value
-    .split('\n').map(s=>s.trim()).filter(Boolean);
-  if (!lines.length) {
-    document.getElementById('err').textContent = "Enter at least one line (Width[, Quantity]).";
-    return;
-  }
-
-  const allParts = [];
-  try {
-    lines.forEach(line=>{
-      const segs = line.split(',').map(s=>s.trim()).filter(Boolean);
-      const widthRaw = segs[0]; // label raw
-      const qty = segs[1] ? parseInt(segs[1],10) : 1;
-      const q = (Number.isFinite(qty) && qty>0) ? qty : 1;
-      allParts.push(...computeParts(widthRaw, q, def));
+        parts.push({ partName: `Side`, width: sideDepth, height: sideHeight, qty: qty * 2 });
+        parts.push({ partName: `Bottom ${faceFrameWidth}`, width: betweenSidesWidth, height: bottomDepth, qty: qty });
+        parts.push({ partName: `Back ${faceFrameWidth}`, width: betweenSidesWidth, height: backHeight, qty: qty });
     });
-  } catch(e) {
-    document.getElementById('err').textContent = "Line error: " + e.message;
-    return;
-  }
 
-  renderPreview(allParts);
-  const csv = buildOptiCutterCSV(allParts);
-  lastCSV = csv;
-  downloadCSV(csv);
-
-  // open OptiCutter immediately (same user gesture)
-  if (document.getElementById('autoOpenOpti')?.checked) {
-    openOptiCutter();
-  }
+    downloadCSV(parts);
 }
 
-function renderPreview(parts) {
-  let html = "<h2>Preview (Fractions)</h2><table><tr><th>Part</th><th>Qty</th><th>Width</th><th>Height</th></tr>";
-  parts.forEach(p=>{
-    html += `<tr>
-      <td>${p.partName}</td>
-      <td>${p.qty}</td>
-      <td>${p.width.toMixedString()}"</td>
-      <td>${p.height.toMixedString()}"</td>
-    </tr>`;
-  });
-  html += "</table>";
-  document.getElementById('preview').innerHTML = html;
+function downloadCSV(parts) {
+    let csv = "Part;Width;Height;Quantity;Material;Notes\n";
+    parts.forEach(p => {
+        csv += `${p.partName};${toFraction(p.width)};${toFraction(p.height)};${p.qty};;\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "cutlist.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
-/* ------------------ OptiCutter CSV (all fractions) ------------------ */
-function safeFracString(v){
-  try { return Frac.fromString(v).toMixedString(); }
-  catch { return v; }
-}
-function buildOptiCutterCSV(parts){
-  const plan     = (document.getElementById('planName').value || "My Sheet Plan").trim();
-  const material = (document.getElementById('materialName').value || "Plywood").trim();
-
-  let kerfOut;
-  try {
-    kerfOut = Frac.fromString((document.getElementById('kerf').value || "3/32").trim()).toMixedString();
-  } catch { kerfOut = (document.getElementById('kerf').value || "3/32").trim(); }
-
-  const LT = safeFracString((document.getElementById('trimLeft').value || "0").trim());
-  const RT = safeFracString((document.getElementById('trimRight').value || "0").trim());
-  const TT = safeFracString((document.getElementById('trimTop').value || "0").trim());
-  const BT = safeFracString((document.getElementById('trimBottom').value || "0").trim());
-
-  const sheetLen = (document.getElementById('sheetLen').value || "96").trim();
-  const sheetWid = (document.getElementById('sheetWid').value || "48").trim();
-  const sheetQty = (document.getElementById('sheetQty').value || "").trim(); // blank allowed
-
-  let csv = "";
-  csv += `N,${plan}\n`;
-  csv += `M,${material}\n`;
-  csv += `K,${kerfOut}\n`;
-  csv += `LT,${LT}\nRT,${RT}\nTT,${TT}\nBT,${BT}\n`;
-  csv += `R,\n`;
-  csv += `S,${sheetLen},${sheetWid},${sheetQty},,,\n`;
-
-  parts.forEach(p=>{
-    const desc   = p.partName || "Part";
-    const qty    = p.qty || 1;
-    const length = p.height.toMixedString();
-    const width  = p.width.toMixedString();
-    csv += `P,${length},${width},${qty},,${desc},\n`; // grain omitted
-  });
-
-  return csv;
-}
-
-/* ------------------ Actions: open, download, copy ------------------ */
 function openOptiCutter() {
-  window.open('https://www.opticutter.com/', '_blank');
+    window.open("https://www.opticutter.com/app/import", "_blank");
 }
-function downloadCSV(csv) {
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = "opticutter_import.csv";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast("CSV downloaded");
-}
-async function copyCSV() {
-  // Build fresh CSV from current inputs (without downloading)
-  try {
-    // lightweight regen (same as run but no preview rebuild or download)
-    let def = {
-      T:  Frac.fromString(document.getElementById('panelThickness').value),
-      FT: Frac.fromString(document.getElementById('frameThickness').value),
-      FR: Frac.fromString(document.getElementById('frameReveal').value),
-      DD: Frac.fromString(document.getElementById('dadoDepth').value),
-      HM: Frac.fromString(document.getElementById('heightMargin').value),
-      H:  Frac.fromString(document.getElementById('defaultHeight').value),
-      D:  Frac.fromString(document.getElementById('defaultDepth').value)
-    };
-    const lines = document.getElementById('batchInput').value
-      .split('\n').map(s=>s.trim()).filter(Boolean);
-    if (!lines.length) { toast("Add at least one line"); return; }
-    const allParts = [];
-    lines.forEach(line=>{
-      const segs = line.split(',').map(s=>s.trim()).filter(Boolean);
-      const widthRaw = segs[0];
-      const qty = segs[1] ? parseInt(segs[1],10) : 1;
-      const q = (Number.isFinite(qty) && qty>0) ? qty : 1;
-      allParts.push(...computeParts(widthRaw, q, def));
-    });
-    const csv = buildOptiCutterCSV(allParts);
-    await navigator.clipboard.writeText(csv);
-    lastCSV = csv;
-    toast("CSV copied to clipboard");
-  } catch (e) {
-    toast("Copy failed: " + (e.message||e));
-  }
-}
-
-/* ------------------ Toast ------------------ */
-let toastTimer=null;
-function toast(msg){
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove('show'), 1600);
-}
-
-/* ------------------ Init ------------------ */
-document.addEventListener('DOMContentLoaded', ()=>{
-  loadSettings();
-});
 </script>
 </body>
 </html>
