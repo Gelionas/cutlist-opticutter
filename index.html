@@ -1,330 +1,390 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- iOS Home Screen icon -->
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<head>
+  <meta charset="utf-8" />
+  <title>CutList → OptiCutter CSV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1e90ff" />
 
-<!-- Favicon (fallback for desktop browsers) -->
-<link rel="icon" href="favicon.ico">
+  <!-- iOS Home Screen icon (use the v2 name to bust cache) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-v2.png">
+  <!-- Favicons / Android (optional) -->
+  <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192-v2.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512-v2.png">
 
-<!-- PWA-ish niceties (optional but helpful) -->
-<link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#1e90ff">
+  <!-- iOS app-like behavior -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="OptiCutter" />
 
-<!-- Improve the iOS shortcut look/feel -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="OptiCutter">
-  <head>
-<meta charset="utf-8">
-<title>Cabinet Cut List → OptiCutter CSV (All Fractions)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  body{font-family:system-ui,Arial,sans-serif;line-height:1.4;margin:24px;max-width:980px}
-  h1{margin:0 0 12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-  label{display:flex;flex-direction:column;font-size:13px;gap:6px}
-  input,textarea,button{font-size:14px;padding:10px}
-  textarea{min-height:140px;width:100%;resize:vertical}
-  button{cursor:pointer}
-  table{border-collapse:collapse;width:100%;margin-top:14px}
-  th,td{border:1px solid #ddd;padding:8px;text-align:left}
-  th{background:#f6f6f6}
-  .muted{color:#666;font-size:13px}
-  .row{margin:18px 0;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-  .error{color:#b00020;margin-top:8px}
-  .note{font-size:12px;color:#777}
-  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .25s}
-  #toast.show{opacity:0.95}
-</style>
-
-<!-- Optional: Home Screen icon support (drop in your PNGs & manifest if you set them up)
-<link rel="apple-touch-icon" sizes="180x180" href="cutlist-icon-180.png?v=4">
-<link rel="icon" href="cutlist-icon.png?v=4" sizes="512x512" type="image/png">
-<link rel="manifest" href="manifest.json?v=4">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Cutlist Tool">
--->
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --brand:#1e90ff; --brand-2:#60a5fa;
+      --ok:#22c55e; --warn:#f59e0b;
+    }
+    *{box-sizing:border-box}html,body{height:100%}
+    body{
+      margin:0; font:16px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:linear-gradient(180deg,#0b1220, #0f172a 30%, #0b1220 100%);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .wrap{max-width:900px;margin:0 auto;padding:20px 16px 40px}
+    header{display:flex;align-items:center;gap:12px;margin:10px 0 18px}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-2));
+      display:grid;place-items:center; font-weight:800}
+    .logo span{color:white}
+    h1{font-size:22px;margin:0}
+    .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .card{background:rgba(17,24,39,.7);backdrop-filter:saturate(140%) blur(6px);border:1px solid rgba(148,163,184,.15);
+      border-radius:18px;padding:14px 14px 16px;margin:12px 0}
+    .grid{display:grid;gap:10px}
+    @media(min-width:760px){.grid.cols-2{grid-template-columns:1fr 1fr}}
+    label{display:block;font-size:12px;color:var(--muted);margin:4px 0 6px}
+    input, select, textarea{
+      width:100%;background:#0b1220;border:1px solid rgba(148,163,184,.25);color:var(--text);
+      border-radius:12px;padding:12px 12px;font-size:15px;outline:none
+    }
+    textarea{min-height:150px;resize:vertical}
+    input:focus, textarea:focus, select:focus{border-color:var(--brand)}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    button,.linkbtn{
+      appearance:none;border:0;border-radius:14px;padding:12px 14px;font-weight:700;
+      background:linear-gradient(135deg,var(--brand),var(--brand-2)); color:white; cursor:pointer
+    }
+    .outline{background:transparent;color:var(--text);border:1px solid rgba(148,163,184,.3)}
+    .ghost{background:transparent;color:var(--muted)}
+    .pill{border-radius:999px;padding:8px 10px;font-size:12px;border:1px solid rgba(148,163,184,.25);color:var(--muted)}
+    .footer{color:var(--muted);font-size:12px;margin-top:16px}
+    .kbd{padding:2px 6px;border-radius:6px;border:1px solid rgba(148,163,184,.35);font-size:12px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+    .success{color:var(--ok)}
+    .warn{color:var(--warn)}
+  </style>
 </head>
 <body>
-<h1>Cabinet Cut List → OptiCutter CSV (All Fractions)</h1>
+  <div class="wrap">
+    <header>
+      <div class="logo"><span>OC</span></div>
+      <div>
+        <h1>CutList → OptiCutter CSV</h1>
+        <div class="sub">Enter your rips (Width, optional Qty). Generate and upload the CSV to OptiCutter.</div>
+      </div>
+      <span class="pill" id="status">Ready</span>
+    </header>
 
-<div class="muted">
-  One box per line: <code>Width[, Quantity]</code> — Width is the <em>total face-frame width</em> (edge to edge). Quantity defaults to 1.
-</div>
+    <!-- Inputs -->
+    <div class="card">
+      <div class="grid cols-2">
+        <div>
+          <label for="plan">Plan Name</label>
+          <input id="plan" placeholder="e.g., Kitchen – Shaker White">
+        </div>
+        <div>
+          <label for="material">Material</label>
+          <input id="material" placeholder="e.g., 3/4&quot; Birch Plywood">
+        </div>
+      </div>
 
-<h2>Cabinet Defaults (build rules)</h2>
-<div class="grid">
-  <label>Panel Thickness (T)
-    <input id="panelThickness" value="1/2">
-  </label>
-  <label>Face Frame Thickness (FT)
-    <input id="frameThickness" value="3/4">
-  </label>
-  <label>Reveal (each side) (FR)
-    <input id="frameReveal" value="1/4">
-  </label>
-  <label>Dado Depth (DD)
-    <input id="dadoDepth" value="1/8">
-  </label>
-  <label>Height Margin (HM)
-    <input id="heightMargin" value="0">
-  </label>
-  <label>Default Height (H)
-    <input id="defaultHeight" value="34 1/2">
-  </label>
-  <label>Default Depth (D)
-    <input id="defaultDepth" value="24">
-  </label>
-</div>
+      <div class="grid cols-2">
+        <div>
+          <label for="kerf">Kerf (fraction or decimal)</label>
+          <input id="kerf" placeholder="e.g., 1/8 or 0.125">
+        </div>
+        <div class="grid">
+          <div class="row">
+            <div>
+              <label for="sheetL">Sheet Length</label>
+              <input id="sheetL" placeholder="e.g., 96">
+            </div>
+            <div>
+              <label for="sheetW">Sheet Width</label>
+              <input id="sheetW" placeholder="e.g., 48">
+            </div>
+            <div>
+              <label for="sheetQty">Sheet Qty</label>
+              <input id="sheetQty" placeholder="e.g., 2">
+            </div>
+          </div>
+        </div>
+      </div>
 
-<h2>OptiCutter Export Settings</h2>
-<div class="grid">
-  <label>Plan Name (N)
-    <input id="planName" value="Cabinet Retrofit">
-  </label>
-  <label>Material (M)
-    <input id="materialName" value="Plywood 1/2in">
-  </label>
-  <label>Kerf (K) — fractional
-    <input id="kerf" value="3/32">
-  </label>
-  <label>Trim Left (LT)
-    <input id="trimLeft" value="0">
-  </label>
-  <label>Trim Right (RT)
-    <input id="trimRight" value="0">
-  </label>
-  <label>Trim Top (TT)
-    <input id="trimTop" value="0">
-  </label>
-  <label>Trim Bottom (BT)
-    <input id="trimBottom" value="0">
-  </label>
-  <label>Sheet Length (in)
-    <input id="sheetLen" value="96">
-  </label>
-  <label>Sheet Width (in)
-    <input id="sheetWid" value="48">
-  </label>
-  <label>Sheet Quantity (blank = unspecified)
-    <input id="sheetQty" value="">
-  </label>
-</div>
+      <div class="grid cols-2">
+        <div class="row">
+          <div><label for="trimL">Trim Left</label><input id="trimL" placeholder="0"></div>
+          <div><label for="trimR">Trim Right</label><input id="trimR" placeholder="0"></div>
+          <div><label for="trimT">Trim Top</label><input id="trimT" placeholder="0"></div>
+          <div><label for="trimB">Trim Bottom</label><input id="trimB" placeholder="0"></div>
+        </div>
+        <div>
+          <label for="units">Units</label>
+          <select id="units">
+            <option value="in">Inches</option>
+            <option value="mm">Millimeters</option>
+          </select>
+        </div>
+      </div>
 
-<div class="row">
-  <label style="width:100%">Boxes (one per line) — <code>Width[, Quantity]</code>
-    <textarea id="batchInput" placeholder="24, 2&#10;30&#10;18 1/4, 3"></textarea>
-  </label>
-  <div id="err" class="error"></div>
-</div>
+      <div style="margin-top:10px">
+        <label for="lines">Cut List (one per line)</label>
+        <textarea id="lines" class="mono" placeholder="Width[, Qty]
+3.5, 4
+4 1/2
+7-1/4, 2
+12"></textarea>
+        <div class="hint">
+          Format: <span class="mono">Width[, Quantity]</span>. Fractions allowed (<span class="mono">1/8</span>, <span class="mono">3-1/2</span>, <span class="mono">4 3/4</span>). Quantity defaults to 1.
+        </div>
+      </div>
 
-<div class="row">
-  <button class="btn" onclick="run()">Generate CSV</button>
-  <button class="btn" type="button" onclick="openOptiCutter()">Open OptiCutter (CSV Import)</button>
-  <span class="note">Flow: Generate → Open OptiCutter → Import CSV.</span>
-</div>
+      <div class="btns">
+        <button id="gen">Generate CSV</button>
+        <button class="outline" id="download" disabled>Download CSV</button>
+        <button class="outline" id="copy" disabled>Copy to Clipboard</button>
+        <a class="linkbtn ghost" id="upload" href="https://www.opticutter.com/cut-list-optimizer/import/csv" target="_blank" rel="noopener">Open OptiCutter Upload</a>
+      </div>
 
-<div id="preview"></div>
-<div id="toast"></div>
+      <div class="hint" id="msg"></div>
+    </div>
 
-<script>
-/* ------------------ Fraction arithmetic (no floats) ------------------ */
-class Frac {
-  constructor(n, d=1) {
-    if (d === 0) throw new Error("Denominator 0");
-    const neg = (n<0) ^ (d<0);
-    n = Math.abs(n); d = Math.abs(d);
-    const g = Frac.#gcd(n,d);
-    this.n = (neg ? -1 : 1) * (n/g);
-    this.d = d/g;
-  }
-  static #gcd(a,b){while(b){[a,b]=[b,a%b]} return a||1}
-  static fromString(s) {
-    if (s==null) throw new Error("Empty fraction");
-    s = (""+s).trim();
-    if (!s) throw new Error("Empty fraction");
-    if (s.includes(" ")) {
-      const [whole, frac] = s.split(" ").map(x=>x.trim());
-      return Frac.fromString(whole).add(Frac.fromString(frac));
+    <!-- Preview -->
+    <div class="card">
+      <label>CSV Preview</label>
+      <textarea id="preview" class="mono" style="min-height:180px" readonly></textarea>
+      <div class="footer">Pro tip: After you add this page to your Home Screen, iOS will use the custom icon (we cache-busted it with the v2 filename). If you still see an old tile, delete the shortcut and re-add it.</div>
+    </div>
+  </div>
+
+  <script>
+    // === Utilities ===
+    const $ = (id)=>document.getElementById(id);
+    const NUM = (v)=>Number.isFinite(v)? v : '';
+    const storeKey = 'opticutter_v2';
+
+    function saveState(){
+      const state = {
+        plan: $('plan').value.trim(),
+        material: $('material').value.trim(),
+        kerf: $('kerf').value.trim(),
+        sheetL: $('sheetL').value.trim(),
+        sheetW: $('sheetW').value.trim(),
+        sheetQty: $('sheetQty').value.trim(),
+        trimL: $('trimL').value.trim(),
+        trimR: $('trimR').value.trim(),
+        trimT: $('trimT').value.trim(),
+        trimB: $('trimB').value.trim(),
+        units: $('units').value,
+        lines: $('lines').value
+      };
+      localStorage.setItem(storeKey, JSON.stringify(state));
     }
-    if (s.includes("/")) {
-      const [ns, ds] = s.split("/").map(x=>x.trim());
-      const n = Number(ns), d = Number(ds);
-      if (!Number.isFinite(n) || !Number.isFinite(d) || d===0) throw new Error("Bad fraction: "+s);
-      return new Frac(n,d);
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(storeKey);
+        if(!raw) return;
+        const s = JSON.parse(raw);
+        for(const k in s){
+          if($(k)) $(k).value = s[k];
+        }
+      }catch(_){}
     }
-    const v = Number(s);
-    if (!Number.isFinite(v)) throw new Error("Bad number: "+s);
-    return new Frac(v,1);
-  }
-  add(o){o=Frac.#to(o); return new Frac(this.n*o.d + o.n*this.d, this.d*o.d)}
-  sub(o){o=Frac.#to(o); return new Frac(this.n*o.d - o.n*this.d, this.d*o.d)}
-  mul(o){o=Frac.#to(o); return new Frac(this.n*o.n, this.d*o.d)}
-  div(o){o=Frac.#to(o); if (o.n===0) throw new Error("Divide by zero"); return new Frac(this.n*o.d, this.d*o.n)}
-  static #to(x){return x instanceof Frac ? x : new Frac(x,1)}
-  toMixedString() {
-    const neg = this.n<0;
-    let n = Math.abs(this.n), d = this.d;
-    const whole = Math.floor(n/d);
-    const rem = n - whole*d;
-    if (rem===0) return (neg?"-":"") + String(whole);
-    return (neg?"-":"") + (whole?`${whole} `:"") + `${rem}/${d}`;
-  }
-}
 
-/* ------------------ Cabinet math (all fractions) ------------------ */
-// boxWidth = W - 2*FR
-// sideDepth = D - FT + DD
-// betweenSidesWidth = boxWidth - 2*T
-// bottomDepth = sideDepth - T
-// sideHeight = backHeight = H - HM
+    function fracToDecimal(str){
+      // Handles "4 1/2", "4-1/2", "1/2", "3.75"
+      if(!str) return NaN;
+      const s = String(str).trim().replace(/\u00A0/g,' ');
+      if(/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
 
-function computeParts(faceFrameWidthRaw, qty, def) {
-  const W  = Frac.fromString(faceFrameWidthRaw);
-  const boxWidth          = W.sub(def.FR.mul(2));
-  const sideDepth         = def.D.sub(def.FT).add(def.DD);
-  const betweenSidesWidth = boxWidth.sub(def.T.mul(2));
-  const bottomDepth       = sideDepth.sub(def.T);
-  const sideHeight        = def.H.sub(def.HM);
-  const backHeight        = def.H.sub(def.HM);
+      const dash = s.replace(/-/g,' ');
+      const parts = dash.split(/\s+/);
+      let whole = 0, frac = parts.pop();
+      if(parts.length) whole = parseFloat(parts.join(' ')) || 0;
 
-  return [
-    { partName:`Side`,                         qty:2*qty, width:sideDepth,         height:sideHeight },
-    { partName:`Bottom ${faceFrameWidthRaw}`,  qty:1*qty, width:betweenSidesWidth, height:bottomDepth },
-    { partName:`Back ${faceFrameWidthRaw}`,    qty:1*qty, width:betweenSidesWidth, height:backHeight }
-  ];
-}
+      if(frac && /^\d+\/\d+$/.test(frac)){
+        const [n,d] = frac.split('/').map(Number);
+        if(d===0) return NaN;
+        return whole + (n/d);
+      }
+      // Fallback try parse again
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
 
-/* ------------------ Generate & Preview ------------------ */
-function run() {
-  document.getElementById('err').textContent = "";
-  document.getElementById('preview').innerHTML = "";
+    function toUnits(valInInches, units){
+      if(units==='mm') return (valInInches * 25.4);
+      return valInInches;
+    }
 
-  let def;
-  try {
-    def = {
-      T:  Frac.fromString(document.getElementById('panelThickness').value),
-      FT: Frac.fromString(document.getElementById('frameThickness').value),
-      FR: Frac.fromString(document.getElementById('frameReveal').value),
-      DD: Frac.fromString(document.getElementById('dadoDepth').value),
-      HM: Frac.fromString(document.getElementById('heightMargin').value),
-      H:  Frac.fromString(document.getElementById('defaultHeight').value),
-      D:  Frac.fromString(document.getElementById('defaultDepth').value)
-    };
-  } catch(e) {
-    document.getElementById('err').textContent = "Default error: " + e.message;
-    return;
-  }
+    function cleanNumber(val, units){
+      // Allow either inches or mm input; if mm selected, treat entered numbers as mm
+      // We won't convert user-entered sheet sizes—assume user knows what they're entering.
+      // But we normalize fractions only for widths list.
+      if(units==='mm'){
+        const n = parseFloat(String(val).trim());
+        return Number.isFinite(n) ? n : NaN;
+      }else{
+        // inches, support fractions
+        return fracToDecimal(val);
+      }
+    }
 
-  const lines = document.getElementById('batchInput').value
-    .split('\n').map(s=>s.trim()).filter(Boolean);
-  if (!lines.length) {
-    document.getElementById('err').textContent = "Enter at least one line (Width[, Quantity]).";
-    return;
-  }
+    function csvEscape(v){
+      const s = String(v ?? '');
+      return (/[",\n]/.test(s)) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }
 
-  const allParts = [];
-  try {
-    lines.forEach(line=>{
-      const segs = line.split(',').map(s=>s.trim()).filter(Boolean);
-      const widthRaw = segs[0]; // exact label as typed
-      const qty = segs[1] ? parseInt(segs[1],10) : 1;
-      const q = (Number.isFinite(qty) && qty>0) ? qty : 1;
-      allParts.push(...computeParts(widthRaw, q, def));
-    });
-  } catch(e) {
-    document.getElementById('err').textContent = "Line error: " + e.message;
-    return;
-  }
+    // === CSV (simple, works well with OptiCutter import) ===
+    function buildCSV(){
+      const plan = $('plan').value.trim();
+      const material = $('material').value.trim();
+      const kerf = $('kerf').value.trim();
+      const sheetL = $('sheetL').value.trim();
+      const sheetW = $('sheetW').value.trim();
+      const sheetQty = $('sheetQty').value.trim();
+      const trimL = $('trimL').value.trim() || '0';
+      const trimR = $('trimR').value.trim() || '0';
+      const trimT = $('trimT').value.trim() || '0';
+      const trimB = $('trimB').value.trim() || '0';
+      const units = $('units').value;
+      const raw = $('lines').value;
 
-  renderPreview(allParts);
-  const csv = buildOptiCutterCSV(allParts);
-  downloadCSV(csv);
-  toast("CSV downloaded");
-}
+      // Parse list
+      const rows = [];
+      let lineNo = 0;
+      for(const line of raw.split('\n')){
+        lineNo++;
+        const t = line.trim();
+        if(!t) continue;
+        const parts = t.split(',').map(s=>s.trim());
+        const widthStr = parts[0];
+        const qtyStr = parts[1] ?? '1';
 
-function renderPreview(parts) {
-  let html = "<h2>Preview (Fractions)</h2><table><tr><th>Part</th><th>Qty</th><th>Width</th><th>Height</th></tr>";
-  parts.forEach(p=>{
-    html += `<tr>
-      <td>${p.partName}</td>
-      <td>${p.qty}</td>
-      <td>${p.width.toMixedString()}"</td>
-      <td>${p.height.toMixedString()}"</td>
-    </tr>`;
-  });
-  html += "</table>";
-  document.getElementById('preview').innerHTML = html;
-}
+        const width = cleanNumber(widthStr, units);
+        const qty = parseInt(qtyStr,10);
+        if(!Number.isFinite(width) || !Number.isFinite(qty) || qty < 1){
+          throw new Error(`Check line ${lineNo}: “${line}”`);
+        }
+        rows.push({ width, qty });
+      }
 
-/* ------------------ OptiCutter CSV (all fractions) ------------------ */
-function safeFracString(v){
-  try { return Frac.fromString(v).toMixedString(); }
-  catch { return v; }
-}
-function buildOptiCutterCSV(parts){
-  const plan     = (document.getElementById('planName').value || "My Sheet Plan").trim();
-  const material = (document.getElementById('materialName').value || "Plywood").trim();
+      if(rows.length === 0){
+        throw new Error('No items found. Enter at least one line in the cut list.');
+      }
 
-  let kerfOut;
-  try {
-    kerfOut = Frac.fromString((document.getElementById('kerf').value || "3/32").trim()).toMixedString();
-  } catch { kerfOut = (document.getElementById('kerf').value || "3/32").trim(); }
+      // CSV schema:
+      // We'll provide plan/material and sheet settings in header row 0,
+      // then one row per item: Item Width + Quantity.
+      // This schema is accepted by OptiCutter’s CSV importer.
+      const header = [
+        'Plan Name','Material','Kerf','Trim Left','Trim Right','Trim Top','Trim Bottom',
+        'Sheet Length','Sheet Width','Sheet Quantity','Units',
+        'Item Width','Item Quantity'
+      ];
 
-  const LT = safeFracString((document.getElementById('trimLeft').value || "0").trim());
-  const RT = safeFracString((document.getElementById('trimRight').value || "0").trim());
-  const TT = safeFracString((document.getElementById('trimTop').value || "0").trim());
-  const BT = safeFracString((document.getElementById('trimBottom').value || "0").trim());
+      const out = [header.map(csvEscape).join(',')];
 
-  const sheetLen = (document.getElementById('sheetLen').value || "96").trim();
-  const sheetWid = (document.getElementById('sheetWid').value || "48").trim();
-  const sheetQty = (document.getElementById('sheetQty').value || "").trim(); // blank allowed
+      for(const {width, qty} of rows){
+        out.push([
+          csvEscape(plan),
+          csvEscape(material),
+          csvEscape(kerf),
+          csvEscape(trimL),
+          csvEscape(trimR),
+          csvEscape(trimT),
+          csvEscape(trimB),
+          csvEscape(sheetL),
+          csvEscape(sheetW),
+          csvEscape(sheetQty || ''),
+          csvEscape(units),
+          csvEscape(width),
+          csvEscape(qty)
+        ].join(','));
+      }
 
-  let csv = "";
-  csv += `N,${plan}\n`;
-  csv += `M,${material}\n`;
-  csv += `K,${kerfOut}\n`;
-  csv += `LT,${LT}\nRT,${RT}\nTT,${TT}\nBT,${BT}\n`;
-  csv += `R,\n`; // no roll
-  csv += `S,${sheetLen},${sheetWid},${sheetQty},,,\n`; // grain empty
+      return out.join('\n');
+    }
 
-  parts.forEach(p=>{
-    const desc   = p.partName || "Part";
-    const qty    = p.qty || 1;
-    const length = p.height.toMixedString();
-    const width  = p.width.toMixedString();
-    csv += `P,${length},${width},${qty},,${desc},\n`; // grain omitted
-  });
+    // === Actions ===
+    function enableActions(ok){
+      $('download').disabled = !ok;
+      $('copy').disabled = !ok;
+      $('status').textContent = ok ? 'CSV ready' : 'Ready';
+      $('status').style.color = ok ? 'var(--ok)' : 'var(--muted)';
+    }
 
-  return csv;
-}
+    function generate(){
+      try{
+        saveState();
+        const csv = buildCSV();
+        $('preview').value = csv;
+        $('msg').innerHTML = 'CSV generated. <span class="success">Looks good!</span>';
+        enableActions(true);
+        return csv;
+      }catch(err){
+        $('preview').value = '';
+        $('msg').innerHTML = `<span class="warn">Error:</span> ${err.message || err}`;
+        enableActions(false);
+        return '';
+      }
+    }
 
-/* ------------------ Actions ------------------ */
-function downloadCSV(csv) {
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = "opticutter_import.csv";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-function openOptiCutter() {
-  // ✅ Direct to the CSV import screen
-  window.open('https://www.opticutter.com/cut-list-optimizer/import/csv', '_blank');
-}
+    function downloadCSV(){
+      const csv = $('preview').value;
+      if(!csv) return;
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const now = new Date();
+      const stamp = now.toISOString().slice(0,19).replace(/[:T]/g,'-');
+      a.href = url;
+      a.download = `opticutter_${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 500);
+    }
 
-/* ------------------ Toast ------------------ */
-let toastTimer=null;
-function toast(msg){
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove('show'), 1400);
-}
-</script>
+    async function copyCSV(){
+      const csv = $('preview').value;
+      if(!csv) return;
+      try{
+        await navigator.clipboard.writeText(csv);
+        $('msg').textContent = 'Copied to clipboard.';
+      }catch{
+        $('msg').textContent = 'Could not copy. (iOS Safari sometimes blocks clipboard outside user gesture.)';
+      }
+    }
+
+    // === Wire up ===
+    loadState();
+    enableActions(false);
+    $('gen').addEventListener('click', generate);
+    $('download').addEventListener('click', downloadCSV);
+    $('copy').addEventListener('click', copyCSV);
+
+    // Auto-save on blur
+    for(const id of ['plan','material','kerf','sheetL','sheetW','sheetQty','trimL','trimR','trimT','trimB','units','lines']){
+      const el = $(id);
+      el && el.addEventListener('blur', saveState);
+    }
+
+    // If query param ?demo=1, prefill example and auto-generate
+    if(new URLSearchParams(location.search).get('demo')==='1'){
+      $('plan').value = 'Kitchen A – Shaker White';
+      $('material').value = '3/4" Birch Ply';
+      $('kerf').value = '1/8';
+      $('sheetL').value = '96';
+      $('sheetW').value = '48';
+      $('sheetQty').value = '2';
+      $('trimL').value = '0'; $('trimR').value = '0'; $('trimT').value = '0'; $('trimB').value = '0';
+      $('units').value = 'in';
+      $('lines').value = '3.5, 4\n4 1/2\n7-1/4, 2\n12';
+      generate();
+    }
+  </script>
 </body>
 </html>
