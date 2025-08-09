@@ -33,4 +33,203 @@
     .row{display:flex;gap:10px}.row>*{flex:1}
     .hint{font-size:12px;color:var(--muted);margin-top:6px}
     .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    button,.linkbtn{appearance:none;border:0;border-radius:14px;padding:12px 14px;font-weight:700;background:linear-gradient(135deg,#60a5fa
+    button,.linkbtn{appearance:none;border:0;border-radius:14px;padding:12px 14px;font-weight:700;background:linear-gradient(135deg,#60a5fa,#2563eb);color:white;cursor:pointer}
+    .outline{background:transparent;color:var(--text);border:1px solid rgba(148,163,184,.3)}
+    .pill{border-radius:999px;padding:8px 10px;font-size:12px;border:1px solid rgba(148,163,184,.25);color:var(--muted)}
+    .footer{color:var(--muted);font-size:12px;margin-top:16px}
+    .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .success{color:var(--ok)} .warn{color:var(--warn)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">OC</div>
+      <div>
+        <h1>CutList → OptiCutter CSV</h1>
+        <div class="sub">Enter strip widths (and qty). We’ll generate a Sheet/Panel CSV in OptiCutter’s format.</div>
+      </div>
+      <span class="pill" id="status">Ready</span>
+    </header>
+
+    <div class="card">
+      <div class="grid cols-2">
+        <div><label for="plan">Plan Name</label><input id="plan" placeholder="e.g., Kitchen – Shaker White"></div>
+        <div><label for="material">Material</label><input id="material" placeholder="e.g., 3/4&quot; Birch Plywood"></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div><label for="kerf">Kerf (number)</label><input id="kerf" placeholder="e.g., 0.125"></div>
+        <div class="grid">
+          <div class="row">
+            <div><label for="sheetL">Sheet Length</label><input id="sheetL" placeholder="e.g., 96"></div>
+            <div><label for="sheetW">Sheet Width</label><input id="sheetW" placeholder="e.g., 48"></div>
+            <div><label for="sheetQty">Sheet Qty</label><input id="sheetQty" placeholder="e.g., 2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="row">
+          <div><label for="trimL">Trim Left</label><input id="trimL" placeholder="0"></div>
+          <div><label for="trimR">Trim Right</label><input id="trimR" placeholder="0"></div>
+          <div><label for="trimT">Trim Top</label><input id="trimT" placeholder="0"></div>
+          <div><label for="trimB">Trim Bottom</label><input id="trimB" placeholder="0"></div>
+        </div>
+        <div>
+          <label for="lines">Cut List (one per line)</label>
+          <textarea id="lines" class="mono" placeholder="Width[, Qty]
+3.5, 4
+4 1/2
+7-1/4, 2
+12"></textarea>
+          <div class="hint">Format: <span class="mono">Width[, Quantity]</span>. Fractions ok (<span class="mono">4 1/2</span>, <span class="mono">7-1/4</span>). Qty defaults to 1.</div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="gen">Generate CSV</button>
+        <button class="outline" id="download" disabled>Download CSV</button>
+        <button class="outline" id="copy" disabled>Copy</button>
+        <a class="linkbtn" id="upload" href="https://www.opticutter.com/cut-list-optimizer/import/csv" target="_blank" rel="noopener">Open OptiCutter Upload</a>
+      </div>
+
+      <div class="hint" id="msg"></div>
+    </div>
+
+    <div class="card">
+      <label>CSV Preview</label>
+      <textarea id="preview" class="mono" style="min-height:180px" readonly></textarea>
+      <div class="footer">Uses OptiCutter’s official “Key column” CSV rows (N,M,K,LT,RT,TT,BT,S,P). :contentReference[oaicite:1]{index=1}</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    const storeKey = 'opticutter_v3';
+
+    function saveState(){
+      const s = ['plan','material','kerf','sheetL','sheetW','sheetQty','trimL','trimR','trimT','trimB','lines']
+        .reduce((o,k)=> (o[k] = ($(k)?.value||'').trim(), o), {});
+      localStorage.setItem(storeKey, JSON.stringify(s));
+    }
+    function loadState(){
+      try{ const s = JSON.parse(localStorage.getItem(storeKey)||'{}');
+        Object.keys(s).forEach(k=>{ if($(k)) $(k).value = s[k]; });
+      }catch(_){}
+    }
+    function fracToDecimal(str){
+      if(!str) return NaN;
+      const s = String(str).trim().replace(/\u00A0/g,' ');
+      if(/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+      const dash = s.replace(/-/g,' ');
+      const parts = dash.split(/\s+/);
+      let whole = 0, frac = parts.pop();
+      if(parts.length) whole = parseFloat(parts.join(' ')) || 0;
+      if(frac && /^\d+\/\d+$/.test(frac)){
+        const [n,d] = frac.split('/').map(Number);
+        if(d===0) return NaN;
+        return whole + (n/d);
+      }
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function buildCSV(){
+      const plan = $('plan').value.trim();
+      const material = $('material').value.trim();
+      const kerf = $('kerf').value.trim();
+      const L = parseFloat(($('sheetL').value||'').trim());
+      const W = parseFloat(($('sheetW').value||'').trim());
+      const SQ = ($('sheetQty').value||'').trim();
+      const lt = ($('trimL').value||'0').trim();
+      const rt = ($('trimR').value||'0').trim();
+      const tt = ($('trimT').value||'0').trim();
+      const bt = ($('trimB').value||'0').trim();
+
+      if(!Number.isFinite(L) || !Number.isFinite(W)){
+        throw new Error('Sheet length/width required.');
+      }
+
+      // Parse lines -> widths & qty
+      const items = [];
+      let lineNo = 0;
+      for(const line of ($('lines').value||'').split('\n')){
+        lineNo++;
+        const t = line.trim();
+        if(!t) continue;
+        const [wStr, qStr] = t.split(',').map(s=> (s||'').trim());
+        const width = fracToDecimal(wStr);
+        const qty = parseInt((qStr||'1'), 10);
+        if(!Number.isFinite(width) || !Number.isFinite(qty) || qty < 1){
+          throw new Error(`Check line ${lineNo}: “${line}”`);
+        }
+        items.push({width, qty});
+      }
+      if(items.length===0) throw new Error('Enter at least one width.');
+
+      // Build OptiCutter CSV (Sheet/Panel)
+      // Key column per manual: N,M,K,LT,RT,TT,BT,S(length,width,qty,grain,group,price,priority),P(length,width,qty,grain,label,group)
+      const out = [];
+      const push = (...cells)=> out.push(cells.map(v => String(v ?? '').replace(/"/g,'""')).join(','));
+
+      if(plan) push('N', plan);
+      if(material) push('M', material);
+      if(kerf) push('K', kerf);
+      if(lt) push('LT', lt);
+      if(rt) push('RT', rt);
+      if(tt) push('TT', tt);
+      if(bt) push('BT', bt);
+
+      // one stock row
+      push('S', L, W, SQ, '', '', '', ''); // grain/group/price/priority left empty
+
+      // each requested strip becomes a panel: length = sheet length, width = strip width
+      for(const it of items){
+        const label = `Rip ${it.width}`;
+        push('P', L, it.width, it.qty, '', label, '');
+      }
+
+      return out.join('\n');
+    }
+
+    function enable(ok){ $('download').disabled = !ok; $('copy').disabled = !ok;
+      $('status').textContent = ok ? 'CSV ready' : 'Ready';
+      $('status').style.color = ok ? 'var(--ok)' : 'var(--muted)'; }
+
+    function generate(){
+      try{
+        saveState();
+        const csv = buildCSV();
+        $('preview').value = csv;
+        $('msg').innerHTML = 'CSV generated. <span class="success">Looks good!</span>';
+        enable(true); return csv;
+      }catch(err){
+        $('preview').value = '';
+        $('msg').innerHTML = `<span class="warn">Error:</span> ${err.message||err}`;
+        enable(false); return '';
+      }
+    }
+    function downloadCSV(){
+      const csv = $('preview').value; if(!csv) return;
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), {
+        href:url, download:`opticutter_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`
+      });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 500);
+    }
+    async function copyCSV(){
+      const csv = $('preview').value; if(!csv) return;
+      try{ await navigator.clipboard.writeText(csv); $('msg').textContent = 'Copied.'; }
+      catch{ $('msg').textContent = 'Clipboard blocked by browser. (Try Download.)'; }
+    }
+
+    loadState(); enable(false);
+    $('gen').addEventListener('click', generate);
+    $('download').addEventListener('click', downloadCSV);
+    $('copy').addEventListener('click', copyCSV);
+  </script>
+</body>
+</html>
